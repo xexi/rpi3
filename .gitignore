@@ -1,0 +1,20 @@
+# Ren'Py runtime
+*.rpyc
+*.rpyb
+demo-renpy/game/cache/
+demo-renpy/game/saves/
+demo-renpy/log.txt
+demo-renpy/traceback.txt
+demo-renpy/errors.txt
+
+# Bundled at install time by setup-renpy.sh; not redistributable
+# (system fonts have OS-vendor licenses)
+demo-renpy/game/fonts/Korean.ttf
+demo-renpy/game/fonts/Korean.ttc
+demo-renpy/game/fonts/Korean.otf
+
+# Claude Code local settings
+.claude/
+
+# OS junk
+.DS_Store
