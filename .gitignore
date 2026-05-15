@@ -16,5 +16,13 @@ demo-renpy/game/fonts/Korean.otf
 # Claude Code local settings
 .claude/
 
+# Python runtime
+__pycache__/
+*.pyc
+.venv/
+
+# Pygame demo: generated word audio (produced by tools/gen_audio.py at install)
+demo-pygame-typing/assets/audio/words/
+
 # OS junk
 .DS_Store
