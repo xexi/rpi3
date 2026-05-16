@@ -106,11 +106,19 @@ CURRENT_STEP="2/6 install Korean fonts"
 echo "==> ${CURRENT_STEP}"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
+# Required: these are what actually make Korean text render. Fail loudly.
 apt-get install -y --no-install-recommends \
   fonts-noto-cjk \
-  fonts-noto-cjk-extra \
-  fonts-nanum \
-  fonts-nanum-coding
+  fonts-nanum
+# Optional extras: large CJK glyph set and the Nanum monospace coding font.
+# fonts-nanum-coding was dropped in Debian Trixie (folded into fonts-nanum),
+# and fonts-noto-cjk-extra is just a bigger glyph set — neither is needed for
+# Korean to render, so install best-effort and don't abort if absent.
+for pkg in fonts-noto-cjk-extra fonts-nanum-coding; do
+  if ! apt-get install -y --no-install-recommends "$pkg" 2>/dev/null; then
+    echo "WARN: optional font package '$pkg' not installed (skipping)" >&2
+  fi
+done
 
 # ---------- 3. fcitx5 ----------
 CURRENT_STEP="3/6 install fcitx5 + Hangul engine"
