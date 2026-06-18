@@ -24,5 +24,8 @@ __pycache__/
 # Pygame demo: generated word audio (produced by tools/gen_audio.py at install)
 demo-pygame-typing/assets/audio/words/
 
+# Grammar demo: local learner progress (single profile, regenerated at runtime)
+demo-grammar-typing/progress.json
+
 # OS junk
 .DS_Store
