@@ -26,6 +26,7 @@ demo-pygame-typing/assets/audio/words/
 
 # Grammar demo: local learner progress (single profile, regenerated at runtime)
 demo-grammar-typing/progress.json
+demo-grammar-tui/progress.json
 
 # OS junk
 .DS_Store
