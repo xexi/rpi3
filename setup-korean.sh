@@ -10,7 +10,9 @@
 #
 # What this does:
 #   1. Generates the ko_KR.UTF-8 locale (UI language stays as-is).
-#   2. Installs CJK + Nanum fonts so Korean text renders everywhere.
+#   2. Installs CJK + Nanum fonts so Korean renders everywhere — GUI apps and
+#      terminal emulators alike (the monospaced "Noto Sans Mono CJK KR" face
+#      that foot/urxvt fall back to ships in fonts-noto-cjk).
 #   3. Installs fcitx5 + fcitx5-hangul + GTK/Qt frontends.
 #   4. Wires GTK_IM_MODULE / QT_IM_MODULE / XMODIFIERS via /etc/environment.
 #   5. Sets system XKB layout to kr/kr104 (physical Korean keyboard with
@@ -102,11 +104,14 @@ fi
 locale-gen ko_KR.UTF-8
 
 # ---------- 2. fonts ----------
-CURRENT_STEP="2/6 install Korean fonts"
+CURRENT_STEP="2/6 install Korean fonts (desktop + terminal)"
 echo "==> ${CURRENT_STEP}"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-# Required: these are what actually make Korean text render. Fail loudly.
+# Required: these are what actually make Korean text render — both in GUI apps
+# and inside terminal emulators. fonts-noto-cjk carries the monospaced
+# "Noto Sans Mono CJK KR" face that foot/urxvt fall back to in a terminal grid,
+# so the Grammar Tap terminal demo shows Hangul instead of tofu. Fail loudly.
 apt-get install -y --no-install-recommends \
   fonts-noto-cjk \
   fonts-nanum
@@ -119,6 +124,9 @@ for pkg in fonts-noto-cjk-extra fonts-nanum-coding; do
     echo "WARN: optional font package '$pkg' not installed (skipping)" >&2
   fi
 done
+# Refresh the fontconfig cache so terminals (and GTK/Qt) see the new faces
+# without waiting for a reboot.
+fc-cache -f >/dev/null 2>&1 || true
 
 # ---------- 3. fcitx5 ----------
 CURRENT_STEP="3/6 install fcitx5 + Hangul engine"

@@ -25,11 +25,11 @@ import time
 from unicodedata import east_asian_width
 
 import progress
-from items import CURRICULUM, iter_units
+from items import CURRICULUM
 
-# Mastery loop tuning — mirrors the pygame build.
-MAX_TRIES = 5          # wrong submissions in a review showing before the answer is revealed
-ADVANCE_PAUSE = 0.45   # seconds to admire a correct answer before the next card
+# Mastery loop tuning.
+MAX_TRIES = 3          # wrong submissions allowed before the answer is revealed
+ADVANCE_PAUSE = 1.5    # seconds to admire a correct answer before the next card
 
 # ---- ANSI ------------------------------------------------------------------
 
@@ -171,7 +171,7 @@ class Game:
     # ---- menu --------------------------------------------------------------
 
     def menu_rows(self):
-        rows = [{"kind": "diagnostic"}]
+        rows = []
         for section in CURRICULUM:
             rows.append({"kind": "section", "section": section})
             for unit in section["units"]:
@@ -209,11 +209,7 @@ class Game:
         for row in rows:
             if row["kind"] == "section":
                 s = row["section"]
-                writeln(f"   {SECTION}{BOLD}{s['section']}. {s['title_en']}  ·  {s['title_ko']}{RESET}")
-            elif row["kind"] == "diagnostic":
-                n += 1
-                choices.append(row)
-                writeln(f"   {GOLD}{n:>2}{RESET}  {TARGET}▶ 전체 진단 (모든 단원){RESET}")
+                writeln(f"   {SECTION}{BOLD}{s['title_en']}  ·  {s['title_ko']}{RESET}")
             else:
                 n += 1
                 choices.append(row)
@@ -230,8 +226,6 @@ class Game:
                 return None
             if ans.isdigit() and 1 <= int(ans) <= len(choices):
                 row = choices[int(ans) - 1]
-                if row["kind"] == "diagnostic":
-                    return [u for _, u in iter_units()]
                 return [row["unit"]]
             # anything else: re-prompt without redrawing the whole menu
 
@@ -242,7 +236,7 @@ class Game:
         self.cards = cards = build_cards(units)
         self.cleared = cleared = {(c["unit_id"], c["idx"]): False for c in cards}
 
-        # PASS 1 — diagnostic: each card once, single attempt.
+        # PASS 1 — diagnostic: each card, up to MAX_TRIES tries before reveal.
         for i, card in enumerate(cards):
             ok = self.ask_card(card, position=(i + 1, len(cards)), review=False)
             cleared[(card["unit_id"], card["idx"])] = ok
@@ -256,18 +250,18 @@ class Game:
         self.summary(cards, weak, units)
 
         # REVIEW — re-serve only weak items, reshuffled each round, until the
-        # queue drains. A card leaves the queue when typed clean (first try)
-        # or skipped; a dirty/revealed pass keeps it for the next round.
+        # queue drains. A card leaves the queue only when typed clean (first
+        # try); a dirty or revealed pass keeps it for the next round. (q exits
+        # the run and saves partial progress.)
         queue = list(weak)
         while queue:
             round_list = list(queue)
             random.shuffle(round_list)
             for card in round_list:
                 outcome = self.review_card(card, left=len(queue))
-                if outcome in ("clean", "skip"):
+                if outcome == "clean":
                     queue.remove(card)
-                    if outcome == "clean":
-                        cleared[(card["unit_id"], card["idx"])] = True
+                    cleared[(card["unit_id"], card["idx"])] = True
 
         self.mastered(cleared)
         self.save()
@@ -295,41 +289,51 @@ class Game:
         writeln()
 
     def ask_card(self, card, position, review):
-        """PASS-1 card: one attempt. Returns True if clean (correct first try)."""
-        show_tip = False
-        while True:
-            self.card_header(card, position=position, review=review)
-            self._draw_blank(card, show_tip)
-            ans = read_line(center_plain("입력 ▶ ", TARGET))
-            cmd = self._command(ans, card)
-            if cmd == "tip":
-                show_tip = True
-                continue
-            if cmd == "skip":
-                self._reveal(card)
-                return False
-            if cmd == "answer":
-                if ans.strip().lower() == card["answer"].lower():
-                    self._correct(card)
-                    return True
-                self._reveal(card, wrong=ans.strip())
-                return False
-
-    def review_card(self, card, left):
-        """REVIEW card: up to MAX_TRIES tries. Returns clean/dirty/skip/reveal."""
+        """PASS-1 card: up to MAX_TRIES tries before the answer is revealed.
+        Returns True only if clean (correct on the very first try); anything
+        slower or revealed counts as weak and goes to the review queue."""
         show_tip = False
         tries = 0
+        nudge = False
         while True:
-            self.card_header(card, left=left, review=True)
-            self._draw_blank(card, show_tip, retry=tries)
+            self.card_header(card, position=position, review=review)
+            self._draw_blank(card, show_tip, retry=tries, nudge=nudge)
+            nudge = False
             ans = read_line(center_plain("입력 ▶ ", TARGET))
             cmd = self._command(ans, card)
             if cmd == "tip":
                 show_tip = True
                 continue
-            if cmd == "skip":
-                self._reveal(card)
-                return "skip"
+            if cmd == "empty":
+                nudge = True          # bare Enter does nothing — ask again
+                continue
+            # an answer
+            if ans.strip().lower() == card["answer"].lower():
+                self._correct(card)
+                return tries == 0
+            tries += 1
+            if tries >= MAX_TRIES:
+                self._reveal(card, wrong=ans.strip())
+                return False
+            # else loop: let them try again
+
+    def review_card(self, card, left):
+        """REVIEW card: up to MAX_TRIES tries. Returns clean/dirty/reveal."""
+        show_tip = False
+        tries = 0
+        nudge = False
+        while True:
+            self.card_header(card, left=left, review=True)
+            self._draw_blank(card, show_tip, retry=tries, nudge=nudge)
+            nudge = False
+            ans = read_line(center_plain("입력 ▶ ", TARGET))
+            cmd = self._command(ans, card)
+            if cmd == "tip":
+                show_tip = True
+                continue
+            if cmd == "empty":
+                nudge = True          # bare Enter does nothing — ask again
+                continue
             # an answer
             if ans.strip().lower() == card["answer"].lower():
                 self._correct(card)
@@ -347,10 +351,10 @@ class Game:
         if s in ("?", "힌트", "hint"):
             return "tip"
         if ans.strip() == "":
-            return "skip"
+            return "empty"            # bare Enter no longer skips — need ≥1 char
         return "answer"
 
-    def _draw_blank(self, card, show_tip, retry=0):
+    def _draw_blank(self, card, show_tip, retry=0, nudge=False):
         visible, colored = sentence_line(card, fill=None)
         writeln(pad_center(cwidth(visible)) + colored)
         writeln()
@@ -362,8 +366,11 @@ class Game:
             writeln(center_plain(f"다시 해봐요  ({retry}/{MAX_TRIES})", DANGER))
         else:
             writeln()
-        writeln()
-        writeln(center_plain("Enter(빈칸) 모르겠어요 · ? 힌트 · q 메뉴", DIM))
+        if nudge:
+            writeln(center_plain("한 글자 이상 입력해요", HINT))
+        else:
+            writeln()
+        writeln(center_plain("정답을 입력하고 Enter · ? 힌트 · q 메뉴", DIM))
         writeln()
 
     def _correct(self, card):

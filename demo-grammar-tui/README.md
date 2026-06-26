@@ -38,22 +38,26 @@ No virtualenv, no dependencies. Needs only Python 3 and a UTF-8 terminal.
 
 ## Terminal & font (the one real requirement)
 
-Korean must render, which is the *terminal's* job, not the app's. The repo
-ships a helper that installs the candidate terminals, the CJK fonts, and the
-per-terminal font config, then launches this game in each so you can compare:
+Korean must render, which is the *terminal's* job, not the app's. Install the
+CJK fonts once with the repo's Korean helper — it installs the same Noto/Nanum
+faces the terminals fall back to (and, as a bonus, system-wide Hangul *input*):
 
 ```bash
-sudo bash ../setup-terminals.sh        # install terminals + fonts + configs
-bash ../setup-terminals.sh run foot    # try the fast Wayland pick
-bash ../setup-terminals.sh run all     # open the game in every GUI terminal
+sudo bash ../setup-korean.sh        # installs fonts-noto-cjk + fonts-nanum
 ```
 
-Notes on the candidates (RPi OS Trixie is Wayland/labwc):
+That gives you the monospaced **Noto Sans Mono CJK KR** face that lines up with
+the double-width Hangul in a terminal grid. Then pick a terminal (RPi OS Trixie
+is Wayland/labwc):
 
-- **`foot`** — native-Wayland, lightest; the recommended fast pick. Font (with
-  Korean fallback) lives in `~/.config/foot/foot.ini`.
-- **`urxvt` (rxvt-unicode)** — X11, runs via Xwayland; very light. Needs the
-  font set in `~/.Xresources` (the helper writes this):
+- **`foot`** — native-Wayland, lightest; the recommended fast pick. Set the
+  font (with Korean fallback) in `~/.config/foot/foot.ini`:
+  ```
+  [main]
+  font=DejaVu Sans Mono:size=14, Noto Sans Mono CJK KR:size=14
+  ```
+- **`urxvt` (rxvt-unicode)** — X11, runs via Xwayland; very light. Set the font
+  in `~/.Xresources`:
   ```
   URxvt.font: xft:DejaVu Sans Mono:size=14,xft:Noto Sans Mono CJK KR:size=14
   ```
@@ -64,21 +68,21 @@ Notes on the candidates (RPi OS Trixie is Wayland/labwc):
 - **tmux** — a multiplexer you run *inside* any of the above; ensure UTF-8
   (`tmux -u`).
 
-Give the window at least ~70 columns so the centred sentences fit. (`setup-korean.sh`
-is only needed to *type* Hangul system-wide — this game just *displays* it.)
+Give the window at least ~70 columns so the centred sentences fit.
 
 ## Controls (type-and-submit)
 
 In a card you **type the missing word and press Enter**:
 
 - correct on the first try → green, +10, auto-advances
-- wrong → shows the answer; in review you get up to 5 tries before it reveals
-- **Enter on an empty line** = "모르겠어요" (skip / don't know)
+- wrong → try again; you get up to **3 tries** before the answer is revealed
+- **type at least one character** — a bare Enter does nothing (no skip)
 - **`?`** = show the Korean grammar tip for this card
-- **`q`** = back to the menu (saves your progress)
+- **`q`** = back to the menu (saves your progress; the only way to leave a card
+  unmastered)
 
-At the menu, **type a number and Enter** to pick a unit (or the full
-diagnostic); **`q`** quits.
+At the menu, **type a number and Enter** to pick a unit (small subject);
+**`q`** quits.
 
 ## What changed from the pygame version
 
